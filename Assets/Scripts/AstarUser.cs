@@ -4,8 +4,7 @@ using UnityEngine;
 //Author: Taylor Conners
 public class AstarUser : MonoBehaviour {
 	private Rigidbody rb;
-	private List<AstarNode> roomNodes, openList, closedList, path;
-	private Queue<AstarNode> queuePath;
+	private List<AstarNode> roomNodes, openList, closedList;
 	private Stack<AstarNode> stackPath;
 	[SerializeField] private Astar controller;
 	private AstarNode startNode, targetNode;
@@ -14,14 +13,12 @@ public class AstarUser : MonoBehaviour {
 	[SerializeField] private KinematicArrive kinArrive;
 	private KinematicArrive.KinematicSteering steering;
 	[SerializeField]private float speed;
-	Vector3 pos;
+	private Vector3 pos;
 	private IEnumerator co;
 
 	void Awake() {
 		openList = new List<AstarNode> ();
 		closedList = new List<AstarNode> ();
-		path = new List<AstarNode> ();
-		queuePath = new Queue<AstarNode> ();
 		stackPath = new Stack<AstarNode> ();
 	}
 
@@ -29,7 +26,7 @@ public class AstarUser : MonoBehaviour {
 	/// Retrieves the initial and necessary references for the A* search.
 	/// </summary>
 	public IEnumerator start() {
-		radius = 0.5f; //how close the invisible leader will get to a node before pathing to the next node in the 'path' AstarNode list
+		radius = 0.5f; //how close the invisible leader will get to a node before pathing to the next node.
 		co = move (0);
 		rb = GetComponent<Rigidbody> ();
 		roomNodes = controller.getNodeListClone ();
@@ -40,24 +37,18 @@ public class AstarUser : MonoBehaviour {
 
 	/// <summary>
 	/// Coroutine called from the GameController instance when the user left-clicks on the ground mesh in the scene.
-	/// It is passed the Vector3 position of where the user clicked on the ground mesh.
-	/// 
-	/// 'co' is a 'move' coroutine, which is defined at the bottom of this script.
-	/// It is using a 'while' loop to function as an instanced FixedUpdate method, so it must
-	/// be stopped and restarted every time this is called, or else multiple instances of the
-	/// movement algorithm are running at the same time for the invisible leader.
 	/// </summary>
-	/// <param name="target">Target.</param>
+	/// <param name="target">The Vector3 position of a user's click on the floor mesh.</param>
 	public IEnumerator updater(Vector3 target) {
 		StopCoroutine(co);
 		co = move (0);
 		controller.detectNodeOccupation (roomNodes);
-		//foreach (AstarNode n in roomNodes) n.reset (); 
 		startNode = setStartNode (startNode);
 		targetNode = setTargetNode (target, targetNode);
-		preSearch (); search (startNode); //sets new H costs, clears all lists, and resets node parameters
+		preSearch (); 
+		search (startNode); 
 		controller.colorNodes (roomNodes); //re-color node objects to reflect new path
-		yield return StartCoroutine (co); //move the invisible leader
+		yield return StartCoroutine (co);
 	}
 
 	/// <summary>
@@ -106,16 +97,14 @@ public class AstarUser : MonoBehaviour {
 	void FixedUpdate(){}
 
 	/// <summary>
-	/// Astar search algorithm. Recursively searches the list of AstarNodes for the fastest path between
-	/// the current AstarNode and the goal AstarNode.
+	/// Astar search algorithm (recursive).
 	/// </summary>
-	/// <param name="current">Current.</param>
+	/// <param name="current">Current node; initially startNode.</param>
 	void search(AstarNode current) {
-		if (current.goal) { //if we have found the path
+		if (current.goal) {
 			closedList.Add (current);
 			current.inClosedList = true;
 			createPath (current);
-			path.Reverse (); //If using a stack, this is not necessary
 			foundGoal = true;
 			return;
 		}
@@ -162,17 +151,15 @@ public class AstarUser : MonoBehaviour {
 	}
 
 	/// <summary>
-	/// Creates the path to be followed by recursively passing itself the parent node of the current node until
-	/// there is no parent node of the current node.
+	/// Creates the path to be followed by recursively passing itself the parent node of the current node.
 	/// </summary>
 	/// <param name="n">N.</param>
 	void createPath(AstarNode n) {
-		// Could this use a stack to make it faster? (not having to reverse) YES
-		path.Add (n);
 		stackPath.Push(n);
 		n.inClosedList = false;
 		n.onPath = true;
-		if (n.getParent () != null) createPath (n.getParent ());
+		if (n.getParent () != null) 
+			createPath (n.getParent ());
 	}
 
 	/// <summary>
@@ -194,44 +181,39 @@ public class AstarUser : MonoBehaviour {
 	void preSearch() {
 		controller.setHCosts (roomNodes, targetNode);
 		foundGoal = false;
-		closedList.Clear (); openList.Clear (); path.Clear ();
-		foreach (AstarNode n in roomNodes) n.reset ();
+		closedList.Clear (); 
+		openList.Clear ();
+		stackPath.Clear();
+		foreach (AstarNode n in roomNodes) 
+			n.reset ();
 	}
 
 	/// <summary>
 	/// Coroutine that handles moving the invisible leader along its path.
-	/// The 'while' loop contained within runs in lock-step with FixedUpdate().
 	/// </summary>
 	/// <param name="current">Current.</param>
 	IEnumerator move(int current) {
-		while (current % path.Count != 0 || (current == 0 && path.Count != 0)) { 
-
-			if(path[current] == stackPath.Peek())
-				Debug.Log("stack ==");
-
-			//if the leader is not at the start node and this is the first iteration, grab the second node
-			if (this.transform.position != startNode.getLocation () && current == 0){
+		AstarNode currTarget;
+		while(stackPath.Count != 0) {
+			if(this.transform.position != startNode.getLocation() && current == 0) {
 				current++;
 				stackPath.Pop();
-			} 
-				
-			if (path.Count != 0 && path [current] != null) { 
-				pos = Vector3.MoveTowards (transform.position, path [current].getLocation (), speed * Time.fixedDeltaTime);
-				transform.position = pos;
-				Quaternion rotation = new Quaternion ();
-				if ((path [current].getLocation () - transform.position) != Vector3.zero) {
-					rotation.SetLookRotation ((path [current].getLocation () - transform.position).normalized);
-					this.transform.rotation = Quaternion.Euler (new Vector3 (0f, rotation.eulerAngles.y, 0f));
-				}
-				if (Vector3.Distance (transform.position, path [current].getLocation ()) <= radius){
-					current++;
-					stackPath.Pop();
-				} //if the leader is sufficiently close to a node, increment current
-					
-				yield return new WaitForFixedUpdate ();
-			} else {
-				yield return null;
 			}
+
+			currTarget = stackPath.Peek();
+			transform.position = Vector3.MoveTowards (transform.position, currTarget.getLocation (), speed * Time.fixedDeltaTime);
+			Quaternion rotation = new Quaternion ();
+
+			if(currTarget.getLocation() - transform.position != Vector3.zero) {
+				rotation.SetLookRotation ((currTarget.getLocation () - transform.position).normalized);
+				this.transform.rotation = Quaternion.Euler (new Vector3 (0f, rotation.eulerAngles.y, 0f));
+			}
+
+			if (Vector3.Distance (transform.position, currTarget.getLocation ()) <= radius)
+				stackPath.Pop();
+				
+			yield return new WaitForFixedUpdate ();
+			 
 		}
 		yield return null;
 	}
