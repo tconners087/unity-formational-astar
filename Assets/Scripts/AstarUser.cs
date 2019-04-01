@@ -140,8 +140,7 @@ public class AstarUser : MonoBehaviour {
 			openList.Add (n);
 		}
 		//sort openList so that first node has lowest F score
-		openList.Sort(compareF); //compareF is a method defined beneath createPath()
-		openList.Reverse (); //code magic because the above line sets openList in reverse order and I don't want to fix it.
+		openList.Sort(compareF);
 		current.inOpenList = false; current.inClosedList = true;
 		closedList.Add (current);
 		current = openList [0];
@@ -169,8 +168,8 @@ public class AstarUser : MonoBehaviour {
 	/// <param name="b">The blue component.</param>
 	int compareF(AstarNode a, AstarNode b) {
 		if (a.getF () > b.getF ())
-			return -1;
-		return 1;
+			return 1;
+		return -1;
 	}
 
 	/// <summary>
