@@ -23,7 +23,6 @@ public class AstarUser : MonoBehaviour {
 
 	/// <summary>
 	/// Retrieves the initial and necessary references for the A* search.
-	/// If you want to turn off all the node gameobjecs, comment out line 34: "controller.visualize(roomNodes);"
 	/// </summary>
 	public IEnumerator start() {
 		radius = 0.5f; //how close the invisible leader will get to a node before pathing to the next node in the 'path' AstarNode list
@@ -65,12 +64,12 @@ public class AstarUser : MonoBehaviour {
 	AstarNode setStartNode(AstarNode s) {
 		foreach (AstarNode n in roomNodes) {
 			if (s == null) {
-				s = n; s.setStart (true); continue;
+				s = n; s.start = true; continue;
 			}
 			float newVal = Vector3.Distance (n.getLocation (), this.transform.position);
 			float oldVal = Vector3.Distance (s.getLocation (), this.transform.position);
 			if (Mathf.Abs(newVal) < Mathf.Abs(oldVal)) {
-				s.setStart (false); n.setStart (true);
+				s.start = false; n.start = true;
 				s = n;
 			}
 		}
@@ -85,15 +84,15 @@ public class AstarUser : MonoBehaviour {
 	/// <param name="t">T.</param>
 	AstarNode setTargetNode(Vector3 target, AstarNode t) {
 		foreach (AstarNode n in roomNodes) {
-			if (n.getIsOccupied ())
+			if (n.isOccupied)
 				continue;
 			if (t == null) {
-				t = n; t.setGoal (true); continue;
+				t = n; t.goal = true; continue;
 			}
 			float newVal = Vector3.Distance (n.getLocation (), target);
 			float oldVal = Vector3.Distance (t.getLocation (), target);
 			if (Mathf.Abs(newVal) < Mathf.Abs(oldVal)) {
-				t.setGoal (false); n.setGoal (true);
+				t.goal = false; n.goal = true;
 				t = n;
 			}
 		}
@@ -108,9 +107,9 @@ public class AstarUser : MonoBehaviour {
 	/// </summary>
 	/// <param name="current">Current.</param>
 	void search(AstarNode current) {
-		if (current.getGoal()) { //if we have found the path
+		if (current.goal) { //if we have found the path
 			closedList.Add (current);
-			current.setInClosedList (true);
+			current.inClosedList = true;
 			createPath (current);
 			path.Reverse ();
 			foundGoal = true;
@@ -119,7 +118,7 @@ public class AstarUser : MonoBehaviour {
 		//for each neighbor of the current node, set F and G and add to openList
 		foreach (AstarNode n in current.getList()) {
 			//if a node is already in the open list, check new route heuristic
-			if (n.getInOpenList()) {
+			if (n.inOpenList) {
 				int tempG;
 				if (current.getRow () == n.getRow () || current.getCol () == n.getCol ()) tempG = 10;
 				else tempG = 14;
@@ -132,9 +131,9 @@ public class AstarUser : MonoBehaviour {
 				}
 			}
 			//if a node is in the closed list, continue
-			if (n.getInClosedList()) continue;
+			if (n.inClosedList) continue;
 			//for an unchecked, pathable neighbor
-			n.setInOpenList(true); n.setParent(current);
+			n.inOpenList = true; n.setParent(current);
 			if (current.getRow () == n.getRow () || current.getCol () == n.getCol ()) n.setG (current.getG () + 10);
 			else n.setG (current.getG () + 14);
 			n.setF ();
@@ -143,7 +142,7 @@ public class AstarUser : MonoBehaviour {
 		//sort openList so that first node has lowest F score
 		openList.Sort(compareF); //compareF is a method defined beneath createPath()
 		openList.Reverse (); //code magic because the above line sets openList in reverse order and I don't want to fix it.
-		current.setInOpenList (false); current.setInClosedList (true);
+		current.inOpenList = false; current.inClosedList = true;
 		closedList.Add (current);
 		current = openList [0];
 		openList.RemoveAt (0);
@@ -157,8 +156,8 @@ public class AstarUser : MonoBehaviour {
 	/// <param name="n">N.</param>
 	void createPath(AstarNode n) {
 		path.Add (n);
-		n.setInClosedList (false);
-		n.setOnPath (true);
+		n.inClosedList = false;
+		n.onPath = true;
 		if (n.getParent () != null) createPath (n.getParent ());
 	}
 

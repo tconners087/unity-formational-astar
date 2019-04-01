@@ -95,9 +95,9 @@ public class Astar : MonoBehaviour {
 		foreach (AstarNode n in roomNodes) {
 			Collider[] c = Physics.OverlapSphere (n.getLocation (), .75f, Background);
 			if (c.Length != 0) {
-				n.setIsOccupied (true);
+				n.isOccupied = true;
 			} else
-				n.setIsOccupied (false);
+				n.isOccupied = false;
 		}
 	}
 
@@ -123,9 +123,9 @@ public class Astar : MonoBehaviour {
 	/// <param name="roomNodes">Room nodes.</param>
 	public void createNodeMarkers(List<AstarNode> roomNodes) {
 		foreach (AstarNode n in roomNodes) {
-			n.setNodeObj (GameObject.Instantiate (nodeObject, n.getLocation (), Quaternion.identity));
-			n.getObject ().SetActive (false);
-			n.getObject ().layer = 2;
+			n.nodeSquare = GameObject.Instantiate (nodeObject, n.getLocation (), Quaternion.identity);
+			n.nodeSquare.SetActive (false);
+			n.nodeSquare.layer = 2;
 		}
 	}
 
@@ -135,7 +135,7 @@ public class Astar : MonoBehaviour {
 	/// <returns>The node list clone.</returns>
 	public List<AstarNode> getNodeListClone() {
 		List<AstarNode> temp = new List<AstarNode> ();
-		temp = nodes.ConvertAll (node => new AstarNode (node.getRow (), node.getCol (), node.getLocation (), node.getObject ()));
+		temp = nodes.ConvertAll (node => new AstarNode (node.getRow (), node.getCol (), node.getLocation (), node.nodeSquare ));
 		return temp;
 	}
 
@@ -147,7 +147,7 @@ public class Astar : MonoBehaviour {
 	/// <param name="goal">Goal.</param>
 	public void setHCosts(List<AstarNode> roomNodes, AstarNode goal) {
 		foreach (AstarNode n in roomNodes) {
-			if (n.getIsOccupied()){
+			if (n.isOccupied){
 				n.setH (5000);
 				continue;
 			}
@@ -188,21 +188,21 @@ public class Astar : MonoBehaviour {
 	public void colorNodes(List<AstarNode> roomNodes) {
 		if (roomNodes.Count != 0) {
 			foreach (AstarNode n in roomNodes) {
-				if (n.getObject() != null){
-					if (n.getStart ()) {
-						n.getObject ().GetComponent<MeshRenderer> ().material.SetColor ("_Color", Color.red);
-					} else if (n.getGoal ()) {
-						n.getObject ().GetComponent<MeshRenderer> ().material.SetColor ("_Color", Color.blue);
-					} else if (n.getOnPath ()) { 
-						n.getObject ().GetComponent<MeshRenderer> ().material.SetColor ("_Color", Color.magenta);
-					} else if (n.getInOpenList ()) {
-						n.getObject ().GetComponent<MeshRenderer> ().material.SetColor ("_Color", Color.yellow);
-					} else if (n.getInClosedList ()) {
-						n.getObject ().GetComponent<MeshRenderer> ().material.SetColor ("_Color", Color.white);
-					} else if (n.getIsOccupied ()) {
-						n.getObject ().GetComponent<MeshRenderer> ().material.SetColor ("_Color", Color.clear);
+				if (n.nodeSquare != null){
+					if (n.start) {
+						n.nodeSquare.GetComponent<MeshRenderer> ().material.SetColor ("_Color", Color.red);
+					} else if (n.goal) {
+						n.nodeSquare.GetComponent<MeshRenderer> ().material.SetColor ("_Color", Color.blue);
+					} else if (n.onPath) { 
+						n.nodeSquare.GetComponent<MeshRenderer> ().material.SetColor ("_Color", Color.magenta);
+					} else if (n.inOpenList) {
+						n.nodeSquare.GetComponent<MeshRenderer> ().material.SetColor ("_Color", Color.yellow);
+					} else if (n.inClosedList) {
+						n.nodeSquare.GetComponent<MeshRenderer> ().material.SetColor ("_Color", Color.white);
+					} else if (n.isOccupied) {
+						n.nodeSquare.GetComponent<MeshRenderer> ().material.SetColor ("_Color", Color.clear);
 					} else
-						n.getObject ().GetComponent<MeshRenderer> ().material.SetColor ("_Color", Color.black);
+						n.nodeSquare.GetComponent<MeshRenderer> ().material.SetColor ("_Color", Color.black);
 				}
 			}
 		}
@@ -236,7 +236,7 @@ public class Astar : MonoBehaviour {
 	/// <param name="roomNodes">Room nodes.</param>
 	public void showNodes(List<AstarNode> roomNodes) {
 		foreach (AstarNode n in roomNodes) {
-			n.getObject ().gameObject.SetActive (true);
+			n.nodeSquare.gameObject.SetActive (true);
 		}
 	}
 }

@@ -16,6 +16,7 @@ public class GameController : MonoBehaviour {
 	public Astar astar;
 	public AstarUser leaderAstar;
 	#endregion
+	
 	//If no instance of GameController exists in scene, force an instance of Gamecontroller.
 	public static GameController instance {
 		get {

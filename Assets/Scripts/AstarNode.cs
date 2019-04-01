@@ -3,11 +3,18 @@ using System.Collections.Generic;
 using UnityEngine;
 //Author: Taylor Conners
 public class AstarNode {
+
 	private int row, col, f, g, h, type;
+	public bool inClosedList {get; set;}
+	public bool inOpenList {get; set;}
+	public bool start {get; set;}
+	public bool goal {get; set;}
+	public bool onPath {get; set;}
+	public bool visited {get; set;}
+	public bool isOccupied { get; set; }
 	private Vector3 location;
-	private bool start, goal, onPath, visited, inOpenList, inClosedList, isOccupied;
 	private AstarNode parent;
-	private GameObject nodeSquare;
+	public GameObject nodeSquare{ get; set; }
 	[SerializeField] private List<AstarNode> neighbors = new List<AstarNode> ();
 
 	public void reset() {
@@ -22,6 +29,7 @@ public class AstarNode {
 		col = c;
 		location = loc;
 	}
+
 	public AstarNode(int r, int c, Vector3 loc, GameObject obj, List<AstarNode> neighborNodes){
 		row = r;
 		col = c;
@@ -37,6 +45,7 @@ public class AstarNode {
 		nodeSquare = obj;
 	}
 	#endregion
+
 	#region overrides
 	public bool compareTo(AstarNode other) {
 		if (row == other.getRow () && col == other.getCol ())
@@ -45,22 +54,15 @@ public class AstarNode {
 	}
 
 	public string toString(){
-		return "Node: " + row + "_" + col + ", inOpenList: " + getInOpenList() + ", inClosedList: " + getInClosedList() + ", goal?: " + getGoal() + ", start?: " + getStart();
+		return "Node: " + row + "_" + col + ", inOpenList: " + inOpenList + ", inClosedList: " + inClosedList + ", goal?: " + goal + ", start?: " + start;
 	}
 	#endregion
+
 	#region setters
 	public void setParameters(int r, int c, Vector3 loc) {
 		row = r;
 		col = c;
 		location = loc;
-	}
-
-	public void setNodeObj(GameObject obj){
-		nodeSquare = obj;
-	}
-
-	public void setIsOccupied(bool b){
-		isOccupied = b;
 	}
 
 	public void setF() {
@@ -79,42 +81,12 @@ public class AstarNode {
 		parent = n;
 	}
 
-	public void setStart (bool s) {
-		start = s;
-	}
-
-	public void setGoal (bool g) {
-		goal = g;
-	}
-
-	public void setVisited (bool v) {
-		visited = v;
-	}
-
-	public void setOnPath (bool p) {
-		onPath = p;
-	}
-
-	public void setInOpenList (bool b) {
-		inOpenList = b;
-	}
-
-	public void setInClosedList (bool b) {
-		inClosedList = b;
-	}
-
 	public void setLoaction (Vector3 loc) {
 		location = loc;
 	}
 	#endregion
-	#region getters
-	public bool getInClosedList(){
-		return inClosedList;
-	}
 
-	public bool getInOpenList(){
-		return inOpenList;
-	}
+	#region getters
 
 	public int getF(){
 		return f;
@@ -148,28 +120,8 @@ public class AstarNode {
 		return neighbors;
 	}
 
-	public bool getGoal(){
-		return goal;
-	}
-
 	public Vector3 getLocation() {
 		return location;
-	}
-
-	public GameObject getObject() {
-		return nodeSquare;
-	}
-
-	public bool getIsOccupied() {
-		return isOccupied;
-	}
-
-	public bool getStart() {
-		return start;
-	}
-
-	public bool getOnPath() {
-		return onPath;
 	}
 	#endregion
 
