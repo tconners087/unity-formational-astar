@@ -4,8 +4,8 @@ using UnityEngine;
 //Author: Taylor Conners
 public class Astar : MonoBehaviour {
 	#region data
+
 	public GameObject nodeObject;
-	//private Vector3 rayStart;
 	[SerializeField] private GameObject player;
 	[SerializeField] private MeshRenderer room;
 	private Vector3[] minMax;
@@ -18,13 +18,13 @@ public class Astar : MonoBehaviour {
 
 	private List<string> keys;
 	private List<AstarNode> nodes;
-	private Dictionary<string, List<AstarNode>> occupiedDict;
 
 	public AstarUser user;
+
 	#endregion
 
 	void Awake () {
-		//when raycasting against background, the Ground or Units will be ignored
+		// Ignore Ground or Units when detecting AstarNode occupation by obstacles. Used in Astar.DetectNodeOccupation method.
 		Background = ~(1 << LayerMask.NameToLayer ("Ground") | 1 << LayerMask.NameToLayer("Units"));
 		nodes = new List<AstarNode> ();
 		minNodeDistance = 2;
@@ -32,12 +32,12 @@ public class Astar : MonoBehaviour {
 	}
 
 	/// <summary>
-	/// Coroutine that decomposes the scene to create a grid of AstarNode objects for pathing.
-	/// It returns the start() Coroutine of the AstarUser reference 'user'.
-	/// This is called once from Start() of GameController singleton.
+	/// Coroutine that decomposes the scene to create a grid of AstarNode objects for pathing. This is called once from Start() of GameController singleton.
 	/// </summary>
+	/// <returns>
+	/// IEnumerator start() of the AstarUser reference 'user'.
+	/// </returns>
 	public IEnumerator decompose(){
-		//yield return new WaitForSeconds (0.1f);
 		reset ();
 		createGrid ();
 		createNodes ();
@@ -45,7 +45,7 @@ public class Astar : MonoBehaviour {
 	}
 
 	/// <summary>
-	/// Populates the nodeGrid[,] Vector3 array with evenly spaced Vector3s that span the surface of the scene's ground mesh.
+	/// Populates the nodeGrid[,] Vector3 array with evenly spaced Vector3s that span the surface of the scene's ground mesh. Currently only tested on Plane mesh. minNodeDistance specifies the distance between every node and is set through the editor.
 	/// </summary>
 	void createGrid(){
 		minMax = getRoomExtentsWorld ();
@@ -71,11 +71,9 @@ public class Astar : MonoBehaviour {
 
 	/// <summary>
 	/// Returns a Vector3[] that holds the minimum and maximum extents of the ground mesh.
-	/// The minimum is stored at index 0 and the maximum is stored at index 1.
 	/// </summary>
-	/// <returns>The room extents world.</returns>
+	/// <returns>Vector3[2] where 0th element is minimum position and 1th element is maximum position of the Plane mesh (room) extents.</returns>
 	Vector3[] getRoomExtentsWorld() {
-		//holds the minimum and maximum extents of the ground mesh
 		Vector3[] array = new Vector3[2];
 		array [0] = room.bounds.min;
 		array [1] = room.bounds.max;
@@ -102,10 +100,10 @@ public class Astar : MonoBehaviour {
 	}
 
 	/// <summary>
-	/// Populates the list of AstarNode objects by determining if the position stored
-	/// in the nodeGrid[,] array of Vector3s is a pathable position.
+	/// Populates the list of AstarNode objects by determining if the position stored in the nodeGrid[,] array of Vector3s is a pathable position.
 	/// </summary>
 	void createNodes() {
+		// Change nodes from a list to a hashmap
 		for (int i = 0; i < nodeGrid.GetLength(0); i++){
 			for (int j = 0; j < nodeGrid.GetLength(1); j++){
 				Collider[] c = Physics.OverlapSphere (nodeGrid[i,j], .75f, Background);
@@ -132,7 +130,7 @@ public class Astar : MonoBehaviour {
 	/// <summary>
 	/// Gets a hard copy of the the list of AstarNode objects associated with the scene.
 	/// </summary>
-	/// <returns>The node list clone.</returns>
+	/// <returns>A clone of the 'nodes' list.</returns>
 	public List<AstarNode> getNodeListClone() {
 		List<AstarNode> temp = new List<AstarNode> ();
 		temp = nodes.ConvertAll (node => new AstarNode (node.getRow (), node.getCol (), node.getLocation (), node.nodeSquare ));
@@ -140,11 +138,10 @@ public class Astar : MonoBehaviour {
 	}
 
 	/// <summary>
-	/// Sets the H costs of each node. If the node is currently occupied by an obstacle,
-	/// he H cost is set to 5000 to ensure that the leader never paths to that node.
+	/// Sets the H costs of each node. If the node is currently occupied by an obstacle, the H cost is set to 5000 to ensure that the leader never paths to that node.
 	/// </summary>
 	/// <param name="roomNodes">Room nodes.</param>
-	/// <param name="goal">Goal.</param>
+	/// <param name="goal">Goal node.</param>
 	public void setHCosts(List<AstarNode> roomNodes, AstarNode goal) {
 		foreach (AstarNode n in roomNodes) {
 			if (n.isOccupied){
@@ -156,31 +153,37 @@ public class Astar : MonoBehaviour {
 	}
 
 	/// <summary>
-	/// Sets the neighboring nodes of each node in the supplied roomNodes list.
-	/// This method currently kills performance when decomposing a scene and 
-	/// causes the application to hang momentarily when decomposing. In the future,
-	/// I should find a better way to determine of a neighboring node exists.
-	/// I think "neighbor = roomNodes.Find(node => node.getRow...);" is the problem.
+	/// Sets the neighboring nodes of each node in the supplied roomNodes list. 
 	/// </summary>
 	/// <param name="roomNodes">Room nodes.</param>
-	public void setNeighbors(List<AstarNode> roomNodes) {
+	/// <param name="nodeLookup">Structure which allows for O(1) lookup of neighboring nodes given a 'row' and 'column'.</param>
+	public void setNeighbors(List<AstarNode> roomNodes, Dictionary<int, Dictionary<int, AstarNode>> nodeLookup) {
+		Dictionary<int, AstarNode> columnMap;
 		foreach (AstarNode n in roomNodes) {
-			int row = n.getRow (); int col = n.getCol (); AstarNode neighbor;
+			int row = n.getRow (); 
+			int col = n.getCol (); 
+			AstarNode neighbor;
 			for (int i = -1; i < 2; i++) {
-				for (int j = -1; j < 2; j++) { //check all surrounding nodes
-					neighbor = roomNodes.Find (node => node.getRow () == (row + i) && node.getCol () == (col + j));
-					if (neighbor != null && !neighbor.compareTo(n)) { //if sought neighbor exists and is not n
-						RaycastHit hit;
-						Ray ray = new Ray (neighbor.getLocation (), n.getLocation ());
-						//check that the node can be reached from the current node (no obstacle in the way)
-						if (!Physics.Raycast (ray, out hit, Vector3.Distance (n.getLocation (), neighbor.getLocation ()), Background)){
-							n.getList ().Add (neighbor);
-						} 
+				for (int j = -1; j < 2; j++) {
+					if(i == 0 && j == 0)
+						continue;
+					if(nodeLookup.TryGetValue(row + i, out columnMap)) {
+						if(columnMap.TryGetValue(col + j, out neighbor)) {
+							if (neighbor != null) {
+								RaycastHit hit;
+								Ray ray = new Ray (neighbor.getLocation (), n.getLocation ());
+								// check that the node can be reached from the current node
+								if (!Physics.Raycast (ray, out hit, Vector3.Distance (n.getLocation (), neighbor.getLocation ()), Background)){
+									n.getList ().Add (neighbor);
+								} 
+							}
+						}
 					}
 				}
 			}
 		}
 	}
+
 	/// <summary>
 	/// Colors the nodeObjects to better visualize the Astar path.
 	/// </summary>
@@ -208,13 +211,20 @@ public class Astar : MonoBehaviour {
 		}
 	}
 
+	/// <summary>
+	/// Clears the 'nodes' list and destroys all objects with tag 'nodeObject' in the scene.
+	/// </summary>
 	void reset() {
 		nodes.Clear ();
 		destroyObjects ("nodeObject");
 	}
 
-	void destroyObjects(string s) {
-		GameObject[] objs = GameObject.FindGameObjectsWithTag (s);
+	/// <summary>
+	/// Finds all objects in a scene with matching Tags and destroys them.
+	/// </summary>
+	/// <param name="tag">Tag name.</param>
+	void destroyObjects(string tag) {
+		GameObject[] objs = GameObject.FindGameObjectsWithTag (tag);
 		foreach(GameObject obj in objs) {
 			Destroy (obj);
 		}

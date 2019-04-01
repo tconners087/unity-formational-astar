@@ -15,8 +15,10 @@ public class AstarUser : MonoBehaviour {
 	[SerializeField]private float speed;
 	private Vector3 pos;
 	private IEnumerator co;
+	private Dictionary<int, Dictionary<int, AstarNode>> nodeLookup;
 
 	void Awake() {
+		nodeLookup = new Dictionary<int, Dictionary<int, AstarNode>>();
 		openList = new List<AstarNode> ();
 		closedList = new List<AstarNode> ();
 		stackPath = new Stack<AstarNode> ();
@@ -26,11 +28,21 @@ public class AstarUser : MonoBehaviour {
 	/// Retrieves the initial and necessary references for the A* search.
 	/// </summary>
 	public IEnumerator start() {
+		Dictionary<int, AstarNode> columnMap;
 		radius = 0.5f; //how close the invisible leader will get to a node before pathing to the next node.
-		co = move (0);
+		co = move (true);
 		rb = GetComponent<Rigidbody> ();
 		roomNodes = controller.getNodeListClone ();
-		controller.setNeighbors (roomNodes);
+		
+		for(int i = 0; i < roomNodes.Count; i++) {
+			if(nodeLookup.TryGetValue(roomNodes[i].getRow(), out columnMap) == false) {
+				columnMap = new Dictionary<int, AstarNode>();
+				nodeLookup.Add(roomNodes[i].getRow(), columnMap);
+			}
+			columnMap.Add(roomNodes[i].getCol(), roomNodes[i]);
+		}
+
+		controller.setNeighbors (roomNodes, nodeLookup);
 		controller.visualize (roomNodes);
 		yield return null;
 	}
@@ -41,7 +53,7 @@ public class AstarUser : MonoBehaviour {
 	/// <param name="target">The Vector3 position of a user's click on the floor mesh.</param>
 	public IEnumerator updater(Vector3 target) {
 		StopCoroutine(co);
-		co = move (0);
+		co = move (true);
 		controller.detectNodeOccupation (roomNodes);
 		startNode = setStartNode (startNode);
 		targetNode = setTargetNode (target, targetNode);
@@ -111,7 +123,6 @@ public class AstarUser : MonoBehaviour {
 
 		//for each neighbor of the current node, set F and G and add to openList
 		foreach (AstarNode n in current.getList()) {
-
 			//if a node is already in the open list, check new route heuristic
 			if (n.inOpenList) {
 				int tempG;
@@ -192,11 +203,11 @@ public class AstarUser : MonoBehaviour {
 	/// Coroutine that handles moving the invisible leader along its path.
 	/// </summary>
 	/// <param name="current">Current.</param>
-	IEnumerator move(int current) {
+	IEnumerator move(bool firstNode) {
 		AstarNode currTarget;
 		while(stackPath.Count != 0) {
-			if(this.transform.position != startNode.getLocation() && current == 0) {
-				current++;
+			if(this.transform.position != startNode.getLocation() && firstNode) {
+				firstNode = false;
 				stackPath.Pop();
 			}
 
