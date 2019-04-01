@@ -5,6 +5,8 @@ using UnityEngine;
 public class AstarUser : MonoBehaviour {
 	private Rigidbody rb;
 	private List<AstarNode> roomNodes, openList, closedList, path;
+	private Queue<AstarNode> queuePath;
+	private Stack<AstarNode> stackPath;
 	[SerializeField] private Astar controller;
 	private AstarNode startNode, targetNode;
 	private bool foundGoal;
@@ -19,6 +21,8 @@ public class AstarUser : MonoBehaviour {
 		openList = new List<AstarNode> ();
 		closedList = new List<AstarNode> ();
 		path = new List<AstarNode> ();
+		queuePath = new Queue<AstarNode> ();
+		stackPath = new Stack<AstarNode> ();
 	}
 
 	/// <summary>
@@ -111,38 +115,47 @@ public class AstarUser : MonoBehaviour {
 			closedList.Add (current);
 			current.inClosedList = true;
 			createPath (current);
-			path.Reverse ();
+			path.Reverse (); //If using a stack, this is not necessary
 			foundGoal = true;
 			return;
 		}
+
 		//for each neighbor of the current node, set F and G and add to openList
 		foreach (AstarNode n in current.getList()) {
+
 			//if a node is already in the open list, check new route heuristic
 			if (n.inOpenList) {
 				int tempG;
 				if (current.getRow () == n.getRow () || current.getCol () == n.getCol ()) tempG = 10;
 				else tempG = 14;
 				if (n.getF () < (n.getH () + current.getG () + tempG)) continue;
-				else { //new route to node is faster than previous route
+				else { // new route to node is faster than previous route
 					n.setParent (current);
 					n.setG (current.getG () + tempG);
 					n.setF ();
 					continue;
 				}
 			}
-			//if a node is in the closed list, continue
+
 			if (n.inClosedList) continue;
-			//for an unchecked, pathable neighbor
+
+			// for an unchecked, pathable neighbor
 			n.inOpenList = true; n.setParent(current);
-			if (current.getRow () == n.getRow () || current.getCol () == n.getCol ()) n.setG (current.getG () + 10);
-			else n.setG (current.getG () + 14);
+			if (current.getRow () == n.getRow () || current.getCol () == n.getCol ()) 
+				n.setG (current.getG () + 10);
+			else 
+				n.setG (current.getG () + 14);
 			n.setF ();
+
 			openList.Add (n);
 		}
+
+		current.inOpenList = false; 
+		current.inClosedList = true;
+		closedList.Add (current);
+
 		//sort openList so that first node has lowest F score
 		openList.Sort(compareF);
-		current.inOpenList = false; current.inClosedList = true;
-		closedList.Add (current);
 		current = openList [0];
 		openList.RemoveAt (0);
 		search (current);
@@ -154,7 +167,9 @@ public class AstarUser : MonoBehaviour {
 	/// </summary>
 	/// <param name="n">N.</param>
 	void createPath(AstarNode n) {
+		// Could this use a stack to make it faster? (not having to reverse) YES
 		path.Add (n);
+		stackPath.Push(n);
 		n.inClosedList = false;
 		n.onPath = true;
 		if (n.getParent () != null) createPath (n.getParent ());
@@ -189,9 +204,17 @@ public class AstarUser : MonoBehaviour {
 	/// </summary>
 	/// <param name="current">Current.</param>
 	IEnumerator move(int current) {
-		while (current % path.Count != 0 || (current == 0 && path.Count != 0)) { //while the leader is not at its goal
+		while (current % path.Count != 0 || (current == 0 && path.Count != 0)) { 
+
+			if(path[current] == stackPath.Peek())
+				Debug.Log("stack ==");
+
 			//if the leader is not at the start node and this is the first iteration, grab the second node
-			if (this.transform.position != startNode.getLocation () && current == 0) current++;
+			if (this.transform.position != startNode.getLocation () && current == 0){
+				current++;
+				stackPath.Pop();
+			} 
+				
 			if (path.Count != 0 && path [current] != null) { 
 				pos = Vector3.MoveTowards (transform.position, path [current].getLocation (), speed * Time.fixedDeltaTime);
 				transform.position = pos;
@@ -200,8 +223,11 @@ public class AstarUser : MonoBehaviour {
 					rotation.SetLookRotation ((path [current].getLocation () - transform.position).normalized);
 					this.transform.rotation = Quaternion.Euler (new Vector3 (0f, rotation.eulerAngles.y, 0f));
 				}
-				if (Vector3.Distance (transform.position, path [current].getLocation ()) <= radius) //if the leader is sufficiently close to a node, increment current
+				if (Vector3.Distance (transform.position, path [current].getLocation ()) <= radius){
 					current++;
+					stackPath.Pop();
+				} //if the leader is sufficiently close to a node, increment current
+					
 				yield return new WaitForFixedUpdate ();
 			} else {
 				yield return null;
