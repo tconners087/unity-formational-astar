@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 //Author: Taylor Conners
 public class AstarUser : MonoBehaviour {
+	#region data
 	private Rigidbody rb;
 	private List<AstarNode> roomNodes, openList, closedList;
 	private Stack<AstarNode> stackPath;
@@ -16,6 +17,7 @@ public class AstarUser : MonoBehaviour {
 	private Vector3 pos;
 	private IEnumerator co;
 	private Dictionary<int, Dictionary<int, AstarNode>> nodeLookup;
+	#endregion
 
 	void Awake() {
 		nodeLookup = new Dictionary<int, Dictionary<int, AstarNode>>();
@@ -65,18 +67,22 @@ public class AstarUser : MonoBehaviour {
 
 	/// <summary>
 	/// Sets the start node as the node closest to the invisible leader.
+	/// TODO: Implement better algorithm than linear search.
 	/// </summary>
 	/// <returns>The start node.</returns>
 	/// <param name="s">S.</param>
 	AstarNode setStartNode(AstarNode s) {
 		foreach (AstarNode n in roomNodes) {
 			if (s == null) {
-				s = n; s.start = true; continue;
+				s = n; 
+				s.start = true; 
+				continue;
 			}
 			float newVal = Vector3.Distance (n.getLocation (), this.transform.position);
 			float oldVal = Vector3.Distance (s.getLocation (), this.transform.position);
 			if (Mathf.Abs(newVal) < Mathf.Abs(oldVal)) {
-				s.start = false; n.start = true;
+				s.start = false; 
+				n.start = true;
 				s = n;
 			}
 		}
@@ -94,12 +100,15 @@ public class AstarUser : MonoBehaviour {
 			if (n.isOccupied)
 				continue;
 			if (t == null) {
-				t = n; t.goal = true; continue;
+				t = n; 
+				t.goal = true; 
+				continue;
 			}
 			float newVal = Vector3.Distance (n.getLocation (), target);
 			float oldVal = Vector3.Distance (t.getLocation (), target);
 			if (Mathf.Abs(newVal) < Mathf.Abs(oldVal)) {
-				t.goal = false; n.goal = true;
+				t.goal = false; 
+				n.goal = true;
 				t = n;
 			}
 		}
@@ -107,6 +116,20 @@ public class AstarUser : MonoBehaviour {
 	}
 
 	void FixedUpdate(){}
+
+	/// <summary>
+	/// Resets certain valuse within each AstarNode in the roomNodes list, sets new H
+	/// costs for each node, and clears all the lists involved in pathing.
+	/// </summary>
+	void preSearch() {
+		controller.setHCosts (roomNodes, targetNode);
+		foundGoal = false;
+		closedList.Clear (); 
+		openList.Clear ();
+		stackPath.Clear();
+		foreach (AstarNode n in roomNodes) 
+			n.reset ();
+	}
 
 	/// <summary>
 	/// Astar search algorithm (recursive).
@@ -121,14 +144,17 @@ public class AstarUser : MonoBehaviour {
 			return;
 		}
 
-		//for each neighbor of the current node, set F and G and add to openList
+		// for each neighbor of the current node, set F and G and add to openList
 		foreach (AstarNode n in current.getList()) {
-			//if a node is already in the open list, check new route heuristic
+			// if a node is already in the open list, check new route heuristic
 			if (n.inOpenList) {
 				int tempG;
-				if (current.getRow () == n.getRow () || current.getCol () == n.getCol ()) tempG = 10;
+				if (current.getRow () == n.getRow () || current.getCol () == n.getCol ()) 
+					tempG = 10;
 				else tempG = 14;
-				if (n.getF () < (n.getH () + current.getG () + tempG)) continue;
+				int possibleRouteF = n.getH () + current.getG () + tempG;
+				if (n.getF () < possibleRouteF) 
+					continue;
 				else { // new route to node is faster than previous route
 					n.setParent (current);
 					n.setG (current.getG () + tempG);
@@ -140,7 +166,8 @@ public class AstarUser : MonoBehaviour {
 			if (n.inClosedList) continue;
 
 			// for an unchecked, pathable neighbor
-			n.inOpenList = true; n.setParent(current);
+			n.inOpenList = true; 
+			n.setParent(current);
 			if (current.getRow () == n.getRow () || current.getCol () == n.getCol ()) 
 				n.setG (current.getG () + 10);
 			else 
@@ -180,23 +207,9 @@ public class AstarUser : MonoBehaviour {
 	/// <param name="a">The alpha component.</param>
 	/// <param name="b">The blue component.</param>
 	int compareF(AstarNode a, AstarNode b) {
-		if (a.getF () > b.getF ())
+		if (a.getF () >= b.getF ())
 			return 1;
 		return -1;
-	}
-
-	/// <summary>
-	/// Resets certain valuse within each AstarNode in the roomNodes list, sets new H
-	/// costs for each node, and clears all the lists involved in pathing.
-	/// </summary>
-	void preSearch() {
-		controller.setHCosts (roomNodes, targetNode);
-		foundGoal = false;
-		closedList.Clear (); 
-		openList.Clear ();
-		stackPath.Clear();
-		foreach (AstarNode n in roomNodes) 
-			n.reset ();
 	}
 
 	/// <summary>
@@ -206,6 +219,8 @@ public class AstarUser : MonoBehaviour {
 	IEnumerator move(bool firstNode) {
 		AstarNode currTarget;
 		while(stackPath.Count != 0) {
+
+			// Makes movement look smoother.
 			if(this.transform.position != startNode.getLocation() && firstNode) {
 				firstNode = false;
 				stackPath.Pop();

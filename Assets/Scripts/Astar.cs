@@ -61,11 +61,29 @@ public class Astar : MonoBehaviour {
 		while (min.x < max.x){
 			while (min.z < max.z) {
 				nodeGrid [i, j] = new Vector3 (min.x + 1f, 0f, min.z + 1f); 
-				j++; min.z += minNodeDistance;
+				j++; 
+				min.z += minNodeDistance;
 			}
 			min.x += minNodeDistance;
 			min.z = minMax [0].z;
-			i++; j = 0;
+			i++; 
+			j = 0;
+		}
+	}
+
+	/// <summary>
+	/// Populates the list of AstarNode objects by determining if the position stored in the nodeGrid[,] array of Vector3s is a pathable position.
+	/// </summary>
+	void createNodes() {
+		// Change nodes from a list to a hashmap
+		for (int i = 0; i < nodeGrid.GetLength(0); i++){
+			for (int j = 0; j < nodeGrid.GetLength(1); j++){
+				Collider[] c = Physics.OverlapSphere (nodeGrid[i,j], .75f, Background);
+				if (c.Length == 0) {
+					nodes.Add (new AstarNode ());
+					nodes [nodes.Count - 1].setParameters (i, j, nodeGrid [i, j]);
+				}
+			}
 		}
 	}
 
@@ -100,22 +118,6 @@ public class Astar : MonoBehaviour {
 	}
 
 	/// <summary>
-	/// Populates the list of AstarNode objects by determining if the position stored in the nodeGrid[,] array of Vector3s is a pathable position.
-	/// </summary>
-	void createNodes() {
-		// Change nodes from a list to a hashmap
-		for (int i = 0; i < nodeGrid.GetLength(0); i++){
-			for (int j = 0; j < nodeGrid.GetLength(1); j++){
-				Collider[] c = Physics.OverlapSphere (nodeGrid[i,j], .75f, Background);
-				if (c.Length == 0) {
-					nodes.Add (new AstarNode ());
-					nodes [nodes.Count - 1].setParameters (i, j, nodeGrid [i, j]);
-				}
-			}
-		}
-	}
-
-	/// <summary>
 	/// Instantiates gameobjects to visually represent the nodes of the AstarNode list.
 	/// </summary>
 	/// <param name="roomNodes">Room nodes.</param>
@@ -138,7 +140,7 @@ public class Astar : MonoBehaviour {
 	}
 
 	/// <summary>
-	/// Sets the H costs of each node. If the node is currently occupied by an obstacle, the H cost is set to 5000 to ensure that the leader never paths to that node.
+	/// Sets the H costs of each node. The H heuristic is an estimation of the cost to reach the goal node from each node. If the node is currently occupied by an obstacle, the H cost is set to 5000 to ensure that the leader never paths to that node.
 	/// </summary>
 	/// <param name="roomNodes">Room nodes.</param>
 	/// <param name="goal">Goal node.</param>
